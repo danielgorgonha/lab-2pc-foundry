@@ -1,0 +1,10 @@
+
+Iniciando transacao tx-1779798249386
+Transferencia: Banco A -> Banco B | Valor: 150
+[Coordenador] Voto de Banco A: NO
+[Coordenador] Voto de Banco B: YES
+[Coordenador] Decisao final: ABORT
+[Coordenador] Registrando decisao na Sepolia...
+[Coordenador] Decisao registrada na blockchain.
+transactionId: tx-1779798249386
+Hash da transacao: 0x74bc40f0255dd26b6464c49ee05c2444ef52799cd9dfd0baa281e42754b7648c

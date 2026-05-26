@@ -1,0 +1,11 @@
+No files changed, compilation skipped
+
+Ran 5 tests for test/CommitLog.t.sol:CommitLogTest
+[PASS] test_GetDecisionReturnsStored() (gas: 123076)
+[PASS] test_RecordAbortStoresAmount() (gas: 125010)
+[PASS] test_RecordCommitStoresAllFields() (gas: 128726)
+[PASS] test_RevertWhen_DecisionUnknown() (gas: 11884)
+[PASS] test_RevertWhen_DoubleRecord() (gas: 126222)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 1.34ms (582.98µs CPU time)
+
+Ran 1 test suite in 10.63ms (1.34ms CPU time): 5 tests passed, 0 failed, 0 skipped (5 total tests)

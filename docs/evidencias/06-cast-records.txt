@@ -1,0 +1,16 @@
+=== cast call records(string)(string,uint8,uint256,address,uint256) tx-1779798234008 (COMMIT) ===
+"tx-1779798234008"
+1
+1779798240 [1.779e9]
+0x6Dd7513A31E30A43B8441fb8538a8a41CFffa921
+50
+
+=== cast call records(string)(string,uint8,uint256,address,uint256) tx-1779798249386 (ABORT) ===
+"tx-1779798249386"
+2
+1779798252 [1.779e9]
+0x6Dd7513A31E30A43B8441fb8538a8a41CFffa921
+150
+
+=== getDecision(tx-1779798234008) ===
+1

@@ -1,0 +1,5 @@
+[Banco A] Escutando na porta 5001
+[Banco A] PREPARE recebido
+[Banco A] COMMIT. Novo saldo: 50
+[Banco A] PREPARE recebido
+[Banco A] ABORT. Nenhuma alteracao feita.

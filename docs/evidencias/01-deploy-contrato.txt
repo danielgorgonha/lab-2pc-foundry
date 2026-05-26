@@ -1,0 +1,31 @@
+Compiling 2 files with Solc 0.8.24
+Solc 0.8.24 finished in 777.99ms
+Compiler run successful!
+Script ran successfully.
+
+== Return ==
+0: contract CommitLog 0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 11155111
+
+Estimated gas price: 2.128044228 gwei
+
+Estimated total gas used for script: 590877
+
+Estimated amount required: 0.001257412389307956 ETH
+
+==========================
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /home/daniel/development/staff/aula-sistema-distribuidos/lab-2pc-foundry/broadcast/DeployCommitLog.s.sol/11155111/run-latest.json
+
+Sensitive values saved to: /home/daniel/development/staff/aula-sistema-distribuidos/lab-2pc-foundry/cache/DeployCommitLog.s.sol/11155111/run-latest.json
+
