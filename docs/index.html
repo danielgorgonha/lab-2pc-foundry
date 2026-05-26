@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lab 2PC + Sepolia — Visualização</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <p class="eyebrow">Sistemas Distribuídos · Trabalho Final</p>
+      <h1>Two-Phase Commit<br/><span>+ registro imutável na Sepolia</span></h1>
+      <p class="lede">
+        Uma transferência bancária distribuída coordenada pelo protocolo 2PC,
+        com a decisão final (COMMIT ou ABORT) gravada num smart contract Ethereum
+        como trilha de auditoria.
+      </p>
+      <div class="hero-links">
+        <a class="btn btn-primary" href="#play">Ver animação</a>
+        <a class="btn" href="https://github.com/danielgorgonha/lab-2pc-foundry" target="_blank" rel="noopener">Código no GitHub</a>
+        <a class="btn" href="https://sepolia.etherscan.io/address/0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39" target="_blank" rel="noopener">Contrato na Etherscan</a>
+      </div>
+    </div>
+  </header>
+
+  <section id="play" class="section">
+    <div class="container">
+      <h2>1. O fluxo, passo a passo</h2>
+      <p class="muted">
+        Cliente pede a transferência. O coordenador pergunta aos bancos se podem efetivar.
+        Se todos respondem YES, ele decide COMMIT; se algum responde NO, decide ABORT.
+        A decisão final é registrada na blockchain.
+      </p>
+
+      <div class="controls">
+        <button id="btn-commit" class="btn btn-primary">▶ Cenário COMMIT (valor 50)</button>
+        <button id="btn-abort" class="btn">▶ Cenário ABORT (valor 150)</button>
+        <button id="btn-reset" class="btn btn-ghost">Reiniciar</button>
+      </div>
+
+      <div class="stage">
+        <svg id="diagram" viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <!-- Cliente -->
+          <g class="node" id="node-client" transform="translate(340,20)">
+            <rect width="120" height="50" rx="10"/>
+            <text x="60" y="30" text-anchor="middle">Cliente</text>
+          </g>
+
+          <!-- Coordenador -->
+          <g class="node" id="node-coord" transform="translate(320,130)">
+            <rect width="160" height="60" rx="10"/>
+            <text x="80" y="34" text-anchor="middle">Coordenador 2PC</text>
+            <text class="small" x="80" y="52" text-anchor="middle" id="coord-decision"></text>
+          </g>
+
+          <!-- Banco A -->
+          <g class="node bank" id="node-bankA" transform="translate(80,260)">
+            <rect width="180" height="80" rx="10"/>
+            <text x="90" y="32" text-anchor="middle">Banco A</text>
+            <text class="small" x="90" y="54" text-anchor="middle">saldo: <tspan id="balA">100</tspan></text>
+            <text class="small" x="90" y="70" text-anchor="middle" id="voteA"></text>
+          </g>
+
+          <!-- Banco B -->
+          <g class="node bank" id="node-bankB" transform="translate(540,260)">
+            <rect width="180" height="80" rx="10"/>
+            <text x="90" y="32" text-anchor="middle">Banco B</text>
+            <text class="small" x="90" y="54" text-anchor="middle">saldo: <tspan id="balB">20</tspan></text>
+            <text class="small" x="90" y="70" text-anchor="middle" id="voteB"></text>
+          </g>
+
+          <!-- Blockchain -->
+          <g class="node blockchain" id="node-chain" transform="translate(280,420)">
+            <rect width="240" height="100" rx="14"/>
+            <text x="120" y="34" text-anchor="middle">Smart Contract</text>
+            <text class="small" x="120" y="56" text-anchor="middle">Sepolia · CommitLog</text>
+            <text class="small mono" x="120" y="80" text-anchor="middle" id="chain-state">aguardando registro…</text>
+          </g>
+
+          <!-- caminhos -->
+          <path id="path-cli-coord" d="M400,70 L400,130" />
+          <path id="path-coord-A" d="M370,190 L170,260" />
+          <path id="path-coord-B" d="M430,190 L630,260" />
+          <path id="path-A-coord" d="M170,260 L370,190" />
+          <path id="path-B-coord" d="M630,260 L430,190" />
+          <path id="path-coord-chain" d="M400,190 L400,420" />
+
+          <!-- packet em movimento -->
+          <circle id="packet" r="9" cx="-50" cy="-50" />
+          <text id="packet-label" x="-50" y="-46" text-anchor="middle"></text>
+        </svg>
+
+        <div class="log">
+          <h3>Log do coordenador</h3>
+          <ol id="log-list"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="container">
+      <h2>2. O que ficou gravado on-chain</h2>
+      <p class="muted">
+        Os botões abaixo consultam o contrato real na Sepolia via RPC público e mostram
+        os 5 campos do <code>records(transactionId)</code>: id, decisão, timestamp,
+        coordenador e valor.
+      </p>
+
+      <div class="controls">
+        <button class="btn" data-tx="tx-1779798234008">Consultar tx COMMIT</button>
+        <button class="btn" data-tx="tx-1779798249386">Consultar tx ABORT</button>
+      </div>
+
+      <div id="onchain" class="card">
+        <p class="muted">Clique em um dos botões para buscar o registro.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2>3. Evidências da execução</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Contrato</h3>
+          <p class="mono">0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39</p>
+          <a class="btn btn-ghost" href="https://sepolia.etherscan.io/address/0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39" target="_blank" rel="noopener">Ver na Etherscan ↗</a>
+        </div>
+        <div class="card">
+          <h3>Transação COMMIT</h3>
+          <p class="mono small">tx-1779798234008</p>
+          <p class="mono small">0x8867e2a1…02bb9</p>
+          <a class="btn btn-ghost" href="https://sepolia.etherscan.io/tx/0x8867e2a13e6446f294193505f1e389c6692dcac26ecfd4cc7429ff3bf5302bb9" target="_blank" rel="noopener">Ver tx ↗</a>
+        </div>
+        <div class="card">
+          <h3>Transação ABORT</h3>
+          <p class="mono small">tx-1779798249386</p>
+          <p class="mono small">0x74bc40f0…7648c</p>
+          <a class="btn btn-ghost" href="https://sepolia.etherscan.io/tx/0x74bc40f0255dd26b6464c49ee05c2444ef52799cd9dfd0baa281e42754b7648c" target="_blank" rel="noopener">Ver tx ↗</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p class="muted small">
+        Lab final — Sistemas Distribuídos ·
+        <a href="https://github.com/danielgorgonha/lab-2pc-foundry">danielgorgonha/lab-2pc-foundry</a>
+      </p>
+    </div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

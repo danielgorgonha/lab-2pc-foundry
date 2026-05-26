@@ -1,0 +1,212 @@
+:root {
+  --bg: #0b0d12;
+  --surface: #141821;
+  --surface-2: #1c2230;
+  --text: #e6e9ef;
+  --muted: #8a93a6;
+  --accent: #6ea8fe;
+  --accent-2: #b794ff;
+  --commit: #4ade80;
+  --abort: #f87171;
+  --chain: #fbbf24;
+  --border: #232a3a;
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: radial-gradient(1200px 600px at 50% -100px, #1a2238 0%, var(--bg) 70%);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+.container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+/* HERO */
+.hero { padding: 96px 0 64px; }
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+h1 {
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 24px;
+  font-weight: 700;
+}
+h1 span {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lede { color: var(--muted); max-width: 640px; font-size: 18px; margin: 0 0 28px; }
+
+.hero-links { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.btn:hover { background: var(--surface-2); transform: translateY(-1px); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+  color: #0a0e1a;
+  font-weight: 600;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost { background: transparent; }
+
+/* SECTIONS */
+.section { padding: 64px 0; }
+.section.alt { background: linear-gradient(180deg, transparent, rgba(255,255,255,0.02)); }
+h2 {
+  font-size: clamp(28px, 4vw, 36px);
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+}
+h3 { margin: 0 0 12px; font-size: 18px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.mono { font-family: var(--mono); }
+code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; border-radius: 4px; }
+
+.controls {
+  display: flex; gap: 10px; flex-wrap: wrap; margin: 24px 0;
+}
+
+/* STAGE */
+.stage {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+@media (max-width: 800px) {
+  .stage { grid-template-columns: 1fr; }
+}
+
+#diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  height: auto;
+  color: var(--muted);
+}
+#diagram .node rect {
+  fill: var(--surface-2);
+  stroke: var(--border);
+  stroke-width: 1.5;
+  transition: stroke 0.3s, filter 0.3s;
+}
+#diagram .node text {
+  fill: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+}
+#diagram .node text.small { fill: var(--muted); font-size: 11px; font-weight: 400; }
+#diagram .node.blockchain rect { stroke: #2d3447; }
+#diagram .node.active rect {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 12px rgba(110,168,254,0.6));
+}
+#diagram .node.commit rect { stroke: var(--commit); filter: drop-shadow(0 0 12px rgba(74,222,128,0.5)); }
+#diagram .node.abort rect { stroke: var(--abort); filter: drop-shadow(0 0 12px rgba(248,113,113,0.5)); }
+#diagram .node.chain-recorded rect { stroke: var(--chain); filter: drop-shadow(0 0 14px rgba(251,191,36,0.6)); }
+
+#diagram path {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+#packet {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 8px rgba(110,168,254,0.8));
+  transition: cx 0.5s ease, cy 0.5s ease, fill 0.2s;
+}
+#packet.hidden { opacity: 0; }
+#packet.yes { fill: var(--commit); filter: drop-shadow(0 0 8px rgba(74,222,128,0.8)); }
+#packet.no { fill: var(--abort); filter: drop-shadow(0 0 8px rgba(248,113,113,0.8)); }
+#packet.chain { fill: var(--chain); filter: drop-shadow(0 0 10px rgba(251,191,36,0.8)); }
+#packet-label {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  transition: x 0.5s ease, y 0.5s ease, opacity 0.2s;
+}
+#packet-label.hidden { opacity: 0; }
+
+#coord-decision { font-weight: 700; }
+#coord-decision.commit { fill: var(--commit) !important; }
+#coord-decision.abort { fill: var(--abort) !important; }
+
+/* LOG */
+.log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  font-family: var(--mono);
+  font-size: 13px;
+  max-height: 560px;
+  overflow: auto;
+}
+.log h3 { font-family: var(--font); }
+.log ol { padding-left: 20px; margin: 0; color: var(--muted); }
+.log li { padding: 4px 0; opacity: 0; transform: translateX(-6px); transition: all 0.3s; }
+.log li.shown { opacity: 1; transform: none; color: var(--text); }
+.log li.commit { color: var(--commit); }
+.log li.abort { color: var(--abort); }
+.log li.chain { color: var(--chain); }
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.card .mono { word-break: break-all; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+/* ONCHAIN PANEL */
+#onchain { margin-top: 16px; }
+#onchain table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+#onchain td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+#onchain td:first-child { color: var(--muted); width: 130px; white-space: nowrap; }
+#onchain td.commit { color: var(--commit); }
+#onchain td.abort { color: var(--abort); }
+
+footer { padding: 40px 0; border-top: 1px solid var(--border); margin-top: 40px; }
+footer a { color: var(--muted); }
