@@ -1,0 +1,14 @@
+{
+  "name": "lab-2pc-foundry",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "bankA": "node bankA.js",
+    "bankB": "node bankB.js",
+    "coordinator": "node coordinator.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2"
+  }
+}
