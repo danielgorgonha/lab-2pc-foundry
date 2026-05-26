@@ -180,10 +180,11 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
   color: var(--muted);
 }
 #diagram .node rect {
-  fill: var(--surface-2);
-  stroke: var(--border);
+  fill: url(#grad-node);
+  stroke: #2d3447;
   stroke-width: 1.5;
-  transition: stroke 0.3s, filter 0.3s;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.45));
+  transition: stroke 0.35s, filter 0.35s;
 }
 #diagram .node text {
   fill: var(--text);
@@ -192,7 +193,7 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
   font-family: var(--font);
 }
 #diagram .node text.small { fill: var(--muted); font-size: 11px; font-weight: 400; }
-#diagram .node.blockchain rect { stroke: #2d3447; }
+#diagram .node.blockchain rect { fill: url(#grad-chain); stroke: #3a3320; }
 #diagram .node.active rect {
   stroke: var(--accent);
   filter: drop-shadow(0 0 12px rgba(110,168,254,0.55));
@@ -220,27 +221,29 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
 /* Paths */
 #diagram .link {
   fill: none;
-  stroke: var(--link-idle);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 4;
-  transition: stroke 0.2s;
+  stroke: #3a4258;
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  opacity: 0.7;
+  transition: stroke 0.25s, opacity 0.25s, stroke-width 0.25s;
 }
 #diagram .link.hot {
   stroke: var(--link-hot);
-  stroke-width: 2;
-  stroke-dasharray: 6 4;
-  animation: dash-flow 0.8s linear infinite;
-  filter: drop-shadow(0 0 6px rgba(110,168,254,0.4));
+  stroke-width: 3;
+  stroke-dasharray: 8 5;
+  opacity: 1;
+  animation: dash-flow 1.6s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(110,168,254,0.55));
 }
-#diagram .link.hot-yes { stroke: var(--commit); filter: drop-shadow(0 0 6px rgba(74,222,128,0.4)); }
-#diagram .link.hot-no { stroke: var(--abort); filter: drop-shadow(0 0 6px rgba(248,113,113,0.4)); }
-#diagram .link.hot-chain { stroke: var(--chain); filter: drop-shadow(0 0 6px rgba(251,191,36,0.4)); }
+#diagram .link.hot-yes { stroke: var(--commit); filter: drop-shadow(0 0 8px rgba(74,222,128,0.55)); }
+#diagram .link.hot-no { stroke: var(--abort); filter: drop-shadow(0 0 8px rgba(248,113,113,0.55)); }
+#diagram .link.hot-chain { stroke: var(--chain); filter: drop-shadow(0 0 10px rgba(251,191,36,0.6)); }
 @keyframes dash-flow {
-  to { stroke-dashoffset: -20; }
+  to { stroke-dashoffset: -26; }
 }
 
 /* Packet + payload bubble */
-#packet-group { transition: transform 0.55s cubic-bezier(.5,.1,.3,1); }
+#packet-group { transition: transform 1.1s cubic-bezier(.45,.05,.25,1); }
 #packet-group.hidden { opacity: 0; pointer-events: none; }
 #packet {
   fill: var(--accent);
@@ -310,10 +313,86 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
 .card .mono { word-break: break-all; }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
   margin-top: 24px;
 }
+
+/* Evidence cards */
+.card-evidence {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface) 0%, #11151e 100%);
+  padding: 22px;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  overflow: hidden;
+}
+.card-evidence::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  padding: 1px;
+  background: linear-gradient(135deg, transparent, transparent);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s, background 0.3s;
+  pointer-events: none;
+}
+.card-evidence:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+}
+.card-evidence:hover::before {
+  opacity: 1;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.card-evidence.accent-commit:hover::before {
+  background: linear-gradient(135deg, var(--commit), #84e1bd);
+}
+.card-evidence.accent-abort:hover::before {
+  background: linear-gradient(135deg, var(--abort), #fb923c);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.card-head h3 { margin: 0; flex: 1; }
+.card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 16px;
+}
+.card-evidence.accent-commit .card-icon { color: var(--commit); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
+.card-evidence.accent-abort .card-icon { color: var(--abort); border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+.badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.badge-commit { color: var(--commit); border-color: rgba(74,222,128,0.35); background: rgba(74,222,128,0.08); }
+.badge-abort { color: var(--abort); border-color: rgba(248,113,113,0.35); background: rgba(248,113,113,0.08); }
+.card-value {
+  font-size: 13px;
+  margin: 4px 0 12px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  word-break: break-all;
+}
+.card-value.small-hash { font-size: 12px; }
 
 /* ONCHAIN PANEL */
 #onchain { margin-top: 16px; }

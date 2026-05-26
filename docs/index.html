@@ -39,14 +39,6 @@
         <button id="btn-abort" class="btn" aria-label="Executar cenário com decisão ABORT">▶ Cenário ABORT</button>
         <button id="btn-fail" class="btn btn-danger" aria-label="Executar cenário com falha de participante">▶ Cenário FALHA</button>
         <button id="btn-reset" class="btn btn-ghost">Reiniciar</button>
-        <div class="opt">
-          <label for="speed">Velocidade</label>
-          <select id="speed" aria-label="Velocidade da animação">
-            <option value="0.5">0.5×</option>
-            <option value="1" selected>1×</option>
-            <option value="2">2×</option>
-          </select>
-        </div>
         <label class="opt toggle">
           <input type="checkbox" id="sound" /> Som
         </label>
@@ -71,12 +63,20 @@
       <div class="stage">
         <svg id="diagram" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama interativo do protocolo 2PC">
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#5a6478"/>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6b768f"/>
             </marker>
-            <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#6ea8fe"/>
-            </marker>
+            <linearGradient id="grad-node" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1f2535"/>
+              <stop offset="100%" stop-color="#161b27"/>
+            </linearGradient>
+            <linearGradient id="grad-chain" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#2a2418"/>
+              <stop offset="100%" stop-color="#1a1610"/>
+            </linearGradient>
+            <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+            </filter>
           </defs>
 
           <!-- Nodes -->
@@ -122,13 +122,13 @@
             <title>Registro imutável da decisão na Ethereum Sepolia</title>
           </g>
 
-          <!-- Paths -->
-          <path id="path-cli-coord"  class="link" d="M400,70 L400,130"  marker-end="url(#arrow)"/>
-          <path id="path-coord-A"    class="link" d="M370,200 L180,290" marker-end="url(#arrow)"/>
-          <path id="path-coord-B"    class="link" d="M430,200 L620,290" marker-end="url(#arrow)"/>
-          <path id="path-A-coord"    class="link" d="M180,290 L370,200" marker-end="url(#arrow)"/>
-          <path id="path-B-coord"    class="link" d="M620,290 L430,200" marker-end="url(#arrow)"/>
-          <path id="path-coord-chain" class="link" d="M400,200 L400,450" marker-end="url(#arrow)"/>
+          <!-- Paths (cubic Bezier curves for smoother flow) -->
+          <path id="path-cli-coord"   class="link" d="M400,70 C400,90 400,110 400,130"            marker-end="url(#arrow)"/>
+          <path id="path-coord-A"     class="link" d="M370,200 C310,240 240,260 180,290"          marker-end="url(#arrow)"/>
+          <path id="path-coord-B"     class="link" d="M430,200 C490,240 560,260 620,290"          marker-end="url(#arrow)"/>
+          <path id="path-A-coord"     class="link" d="M180,290 C240,260 310,240 370,200"          marker-end="url(#arrow)"/>
+          <path id="path-B-coord"     class="link" d="M620,290 C560,260 490,240 430,200"          marker-end="url(#arrow)"/>
+          <path id="path-coord-chain" class="link" d="M400,200 C400,300 400,380 400,450"          marker-end="url(#arrow)"/>
 
           <!-- Moving packet w/ payload bubble -->
           <g id="packet-group" class="hidden">
@@ -173,21 +173,37 @@
     <div class="container">
       <h2>3. Evidências da execução</h2>
       <div class="grid">
-        <div class="card">
-          <h3>Contrato</h3>
-          <p class="mono">0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39</p>
-          <a class="btn btn-ghost" href="https://sepolia.etherscan.io/address/0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39" target="_blank" rel="noopener">Ver na Etherscan ↗</a>
+        <div class="card card-evidence">
+          <div class="card-head">
+            <span class="card-icon">📜</span>
+            <h3>Smart Contract</h3>
+          </div>
+          <p class="muted small">Endereço deployado na Sepolia</p>
+          <p class="mono card-value">0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39</p>
+          <a class="btn btn-ghost" href="https://sepolia.etherscan.io/address/0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39" target="_blank" rel="noopener">Etherscan ↗</a>
         </div>
-        <div class="card">
-          <h3>Transação COMMIT</h3>
-          <p class="mono small">tx-1779798234008</p>
-          <p class="mono small">0x8867e2a1…02bb9</p>
+        <div class="card card-evidence accent-commit">
+          <div class="card-head">
+            <span class="card-icon">✓</span>
+            <h3>Transação COMMIT</h3>
+            <span class="badge badge-commit">decision = 1</span>
+          </div>
+          <p class="muted small">tx interna</p>
+          <p class="mono card-value">tx-1779798234008</p>
+          <p class="muted small">hash on-chain</p>
+          <p class="mono card-value small-hash">0x8867e2a1…02bb9</p>
           <a class="btn btn-ghost" href="https://sepolia.etherscan.io/tx/0x8867e2a13e6446f294193505f1e389c6692dcac26ecfd4cc7429ff3bf5302bb9" target="_blank" rel="noopener">Ver tx ↗</a>
         </div>
-        <div class="card">
-          <h3>Transação ABORT</h3>
-          <p class="mono small">tx-1779798249386</p>
-          <p class="mono small">0x74bc40f0…7648c</p>
+        <div class="card card-evidence accent-abort">
+          <div class="card-head">
+            <span class="card-icon">⨯</span>
+            <h3>Transação ABORT</h3>
+            <span class="badge badge-abort">decision = 2</span>
+          </div>
+          <p class="muted small">tx interna</p>
+          <p class="mono card-value">tx-1779798249386</p>
+          <p class="muted small">hash on-chain</p>
+          <p class="mono card-value small-hash">0x74bc40f0…7648c</p>
           <a class="btn btn-ghost" href="https://sepolia.etherscan.io/tx/0x74bc40f0255dd26b6464c49ee05c2444ef52799cd9dfd0baa281e42754b7648c" target="_blank" rel="noopener">Ver tx ↗</a>
         </div>
       </div>

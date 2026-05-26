@@ -53,7 +53,6 @@ const phases = [$("phase-1") || document.querySelector('[data-phase="1"]'),
                 $("phase-2") || document.querySelector('[data-phase="2"]'),
                 $("phase-3") || document.querySelector('[data-phase="3"]')];
 
-const speedSel = $("speed");
 const soundChk = $("sound");
 const btnCommit = $("btn-commit");
 const btnAbort = $("btn-abort");
@@ -64,8 +63,6 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matc
 
 /* ---------------- State ---------------- */
 let running = false;
-let speed = 1;
-speedSel.addEventListener("change", () => { speed = Number(speedSel.value); });
 
 /* ---------------- Sound (Web Audio) ---------------- */
 let audioCtx;
@@ -91,8 +88,10 @@ const soundChain = () => { beep(523, 120); setTimeout(() => beep(784, 180), 110)
 const soundFail = () => beep(110, 400, "square", 0.06);
 
 /* ---------------- Helpers ---------------- */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms / speed));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ms = (n) => reducedMotion ? 0 : n;
+const TRAVEL_MS = 1200;  // packet flight time (matches CSS transition)
+const PAUSE_AFTER = 320; // small pause after each fly
 
 function setPhase(idx, state = "active") {
   phases.forEach((el, i) => {
@@ -182,13 +181,13 @@ async function fly(from, to, label, payload = "", variant = "") {
   hotPath(pathKey, variant);
   soundMsg();
 
-  await sleep(40);
+  await sleep(60);
   packetG.setAttribute("transform", `translate(${tx},${ty})`);
-  await sleep(ms(680));
+  await sleep(ms(TRAVEL_MS));
 
   packetG.classList.add("hidden");
   clearPath(pathKey);
-  await sleep(ms(80));
+  await sleep(ms(PAUSE_AFTER));
 }
 
 /* ---------------- Real on-chain receipt fetching ---------------- */
@@ -236,7 +235,7 @@ async function runScenario(kind) {
   deactivate("node-client");
   activate("node-coord");
   coordState.textContent = "iniciando 2PC…";
-  await sleep(ms(280));
+  await sleep(ms(700));
 
   /* ===== PHASE 1: VOTING ===== */
   setPhase(1, "active");
@@ -249,7 +248,7 @@ async function runScenario(kind) {
   ]);
   activate("node-bankA");
   activate("node-bankB");
-  await sleep(ms(380));
+  await sleep(ms(900));
 
   // Votes
   const voteA = (kind === "ABORT") ? "NO" : "YES";
@@ -276,7 +275,7 @@ async function runScenario(kind) {
     statusAEl.textContent = "✗ CRASHED";
     $("node-bankA").classList.add("crashed");
     soundFail();
-    await sleep(ms(700));
+    await sleep(ms(1100));
 
     setPhase(2, "active");
     coordDecision.textContent = "decisão: COMMIT";
@@ -326,7 +325,7 @@ async function runScenario(kind) {
   coordDecision.classList.add(decision.toLowerCase());
   coordState.textContent = `Fase 2 · ${decision}`;
   logStep(`▸ Fase 2 (decision): coordenador decide ${decision}`, decision.toLowerCase());
-  await sleep(ms(550));
+  await sleep(ms(1100));
 
   await Promise.all([
     fly("coord", "bankA", decision, `txId: tx-...`, willCommit ? "yes" : "no"),
@@ -350,7 +349,7 @@ async function runScenario(kind) {
     logStep(`Bancos mantêm saldos inalterados (atomicidade preservada)`, "abort");
     markPhaseDone(2, "abort");
   }
-  await sleep(ms(500));
+  await sleep(ms(1000));
 
   /* ===== PHASE 3: ON-CHAIN AUDIT ===== */
   setPhase(3, "active");
