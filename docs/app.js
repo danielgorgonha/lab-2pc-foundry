@@ -1,55 +1,114 @@
 import { JsonRpcProvider, Contract } from "https://esm.sh/ethers@6.13.2";
 
+/* ---------------- Config ---------------- */
 const CONTRACT = "0xA9b5F751E6711306c8A3B42c5926E9eE5fa9ff39";
 const RPC = "https://ethereum-sepolia-rpc.publicnode.com";
 const ABI = [
   "function records(string) view returns (string, uint8, uint256, address, uint256)"
 ];
+const TX_HASHES = {
+  COMMIT: "0x8867e2a13e6446f294193505f1e389c6692dcac26ecfd4cc7429ff3bf5302bb9",
+  ABORT:  "0x74bc40f0255dd26b6464c49ee05c2444ef52799cd9dfd0baa281e42754b7648c",
+};
 
 const provider = new JsonRpcProvider(RPC);
 const contract = new Contract(CONTRACT, ABI, provider);
 
-/* ---------------- Animation ---------------- */
-
+/* ---------------- Diagram geometry ---------------- */
 const POINTS = {
   client: [400, 45],
-  coord:  [400, 160],
-  bankA:  [170, 300],
-  bankB:  [630, 300],
-  chain:  [400, 470],
+  coord:  [400, 165],
+  bankA:  [160, 335],
+  bankB:  [640, 335],
+  chain:  [400, 510],
+};
+const PATHS = {
+  "client-coord": "path-cli-coord",
+  "coord-bankA":  "path-coord-A",
+  "coord-bankB":  "path-coord-B",
+  "bankA-coord":  "path-A-coord",
+  "bankB-coord":  "path-B-coord",
+  "coord-chain":  "path-coord-chain",
 };
 
-const packet = document.getElementById("packet");
-const packetLabel = document.getElementById("packet-label");
-const logList = document.getElementById("log-list");
-const coordDecision = document.getElementById("coord-decision");
-const balAEl = document.getElementById("balA");
-const balBEl = document.getElementById("balB");
-const voteAEl = document.getElementById("voteA");
-const voteBEl = document.getElementById("voteB");
-const chainState = document.getElementById("chain-state");
+/* ---------------- DOM refs ---------------- */
+const $ = (id) => document.getElementById(id);
+const packetG = $("packet-group");
+const packetLabel = $("packet-label");
+const packetPayload = $("packet-payload");
+const logList = $("log-list");
+const coordDecision = $("coord-decision");
+const coordState = $("coord-state");
+const balAEl = $("balA");
+const balBEl = $("balB");
+const voteAEl = $("voteA");
+const voteBEl = $("voteB");
+const statusAEl = $("statusA");
+const statusBEl = $("statusB");
+const chainState = $("chain-state");
+const chainBlock = $("chain-block");
+const chainLink = $("chain-link");
 
+const phases = [$("phase-1") || document.querySelector('[data-phase="1"]'),
+                $("phase-2") || document.querySelector('[data-phase="2"]'),
+                $("phase-3") || document.querySelector('[data-phase="3"]')];
+
+const speedSel = $("speed");
+const soundChk = $("sound");
+const btnCommit = $("btn-commit");
+const btnAbort = $("btn-abort");
+const btnFail = $("btn-fail");
+const btnReset = $("btn-reset");
+
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------------- State ---------------- */
 let running = false;
+let speed = 1;
+speedSel.addEventListener("change", () => { speed = Number(speedSel.value); });
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* ---------------- Sound (Web Audio) ---------------- */
+let audioCtx;
+function beep(freq = 440, duration = 80, type = "sine", vol = 0.08) {
+  if (!soundChk.checked) return;
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = vol;
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
+    osc.stop(audioCtx.currentTime + duration / 1000);
+  } catch {}
+}
+const soundMsg = () => beep(660, 60, "triangle");
+const soundYes = () => beep(880, 90, "sine");
+const soundNo  = () => beep(220, 140, "sawtooth");
+const soundChain = () => { beep(523, 120); setTimeout(() => beep(784, 180), 110); };
+const soundFail = () => beep(110, 400, "square", 0.06);
 
-function resetUI() {
-  packet.classList.add("hidden");
-  packetLabel.classList.add("hidden");
-  packet.setAttribute("cx", -50);
-  packet.setAttribute("cy", -50);
-  packet.classList.remove("yes", "no", "chain");
-  document.querySelectorAll("#diagram .node").forEach((n) =>
-    n.classList.remove("active", "commit", "abort", "chain-recorded")
-  );
-  coordDecision.textContent = "";
-  coordDecision.classList.remove("commit", "abort");
-  balAEl.textContent = "100";
-  balBEl.textContent = "20";
-  voteAEl.textContent = "";
-  voteBEl.textContent = "";
-  chainState.textContent = "aguardando registro…";
-  logList.innerHTML = "";
+/* ---------------- Helpers ---------------- */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms / speed));
+const ms = (n) => reducedMotion ? 0 : n;
+
+function setPhase(idx, state = "active") {
+  phases.forEach((el, i) => {
+    el.classList.remove("active", "done", "abort", "chain");
+    if (i < idx - 1) el.classList.add("done");
+    else if (i === idx - 1) el.classList.add(state === "done" ? "done" : "active");
+  });
+}
+function markPhaseDone(idx, variant = "") {
+  const el = phases[idx - 1];
+  el.classList.remove("active");
+  el.classList.add("done");
+  if (variant) el.classList.add(variant);
+}
+function clearPhases() {
+  phases.forEach((el) => el.classList.remove("active", "done", "abort", "chain"));
 }
 
 function logStep(text, cls = "") {
@@ -61,118 +120,278 @@ function logStep(text, cls = "") {
   logList.parentElement.scrollTop = logList.parentElement.scrollHeight;
 }
 
-function activate(nodeId, cls = "active") {
-  document.getElementById(nodeId).classList.add(cls);
+function activate(nodeId) { $(nodeId).classList.add("active"); }
+function deactivate(nodeId) { $(nodeId).classList.remove("active"); }
+
+function hotPath(key, variant = "") {
+  const id = PATHS[key];
+  if (!id) return;
+  const p = document.getElementById(id);
+  p.classList.add("hot");
+  if (variant) p.classList.add(`hot-${variant}`);
 }
-function deactivate(nodeId) {
-  document.getElementById(nodeId).classList.remove("active");
+function clearPath(key) {
+  const id = PATHS[key];
+  if (!id) return;
+  const p = document.getElementById(id);
+  p.classList.remove("hot", "hot-yes", "hot-no", "hot-chain");
+}
+function clearAllPaths() {
+  Object.values(PATHS).forEach((id) => document.getElementById(id).classList.remove("hot","hot-yes","hot-no","hot-chain"));
 }
 
-async function fly(from, to, label, variant = "") {
+function resetUI() {
+  packetG.classList.add("hidden");
+  packetG.classList.remove("yes", "no", "chain");
+  packetG.setAttribute("transform", "translate(-100,-100)");
+  document.querySelectorAll("#diagram .node").forEach((n) =>
+    n.classList.remove("active", "commit", "abort", "chain-recorded", "crashed", "blocked")
+  );
+  clearAllPaths();
+  coordDecision.textContent = "";
+  coordDecision.classList.remove("commit", "abort");
+  coordState.textContent = "aguardando…";
+  coordState.classList.remove("blocked");
+  balAEl.textContent = "100";
+  balBEl.textContent = "20";
+  voteAEl.textContent = "";
+  voteBEl.textContent = "";
+  statusAEl.textContent = "";
+  statusBEl.textContent = "";
+  chainState.textContent = "aguardando registro…";
+  chainBlock.textContent = "";
+  chainLink.textContent = "";
+  logList.innerHTML = "";
+  clearPhases();
+}
+
+/* Fly a packet from `from` to `to`, light up the path, show payload bubble. */
+async function fly(from, to, label, payload = "", variant = "") {
+  const pathKey = `${from}-${to}`;
   const [fx, fy] = POINTS[from];
   const [tx, ty] = POINTS[to];
-  packet.classList.remove("yes", "no", "chain");
-  if (variant) packet.classList.add(variant);
-  packet.setAttribute("cx", fx);
-  packet.setAttribute("cy", fy);
-  packetLabel.setAttribute("x", fx);
-  packetLabel.setAttribute("y", fy - 14);
+
+  packetG.classList.remove("yes", "no", "chain");
+  if (variant) packetG.classList.add(variant);
+
   packetLabel.textContent = label;
-  packet.classList.remove("hidden");
-  packetLabel.classList.remove("hidden");
-  await sleep(60);
-  packet.setAttribute("cx", tx);
-  packet.setAttribute("cy", ty);
-  packetLabel.setAttribute("x", tx);
-  packetLabel.setAttribute("y", ty - 14);
-  await sleep(620);
-  packet.classList.add("hidden");
-  packetLabel.classList.add("hidden");
-  await sleep(120);
+  packetPayload.textContent = payload || "";
+  packetG.setAttribute("transform", `translate(${fx},${fy})`);
+  packetG.classList.remove("hidden");
+
+  hotPath(pathKey, variant);
+  soundMsg();
+
+  await sleep(40);
+  packetG.setAttribute("transform", `translate(${tx},${ty})`);
+  await sleep(ms(680));
+
+  packetG.classList.add("hidden");
+  clearPath(pathKey);
+  await sleep(ms(80));
 }
 
-async function runScenario(amount) {
+/* ---------------- Real on-chain receipt fetching ---------------- */
+const receiptCache = {};
+async function getReceipt(decision) {
+  const hash = TX_HASHES[decision];
+  if (!hash) return null;
+  if (receiptCache[hash]) return receiptCache[hash];
+  try {
+    const r = await provider.getTransactionReceipt(hash);
+    if (r) receiptCache[hash] = { blockNumber: r.blockNumber, gasUsed: r.gasUsed.toString(), hash };
+    return receiptCache[hash];
+  } catch (e) {
+    return null;
+  }
+}
+
+function showChainLink(decision) {
+  const hash = TX_HASHES[decision];
+  if (!hash) return;
+  chainLink.innerHTML = "";
+  const a = document.createElementNS("http://www.w3.org/2000/svg", "a");
+  a.setAttribute("href", `https://sepolia.etherscan.io/tx/${hash}`);
+  a.setAttribute("target", "_blank");
+  a.setAttribute("rel", "noopener");
+  a.textContent = `tx ${hash.slice(0,10)}…${hash.slice(-6)} ↗`;
+  chainLink.appendChild(a);
+}
+
+/* ---------------- Scenarios ---------------- */
+async function runScenario(kind) {
   if (running) return;
   running = true;
+  [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = true);
   resetUI();
 
-  const willCommit = amount <= 100;
+  const amount = kind === "ABORT" ? 150 : 50;
+  const willCommit = kind === "COMMIT";
+  const crashes = kind === "FAIL";
 
+  // Step 1: client → coord
   logStep(`Cliente solicita transferência de ${amount} (A → B)`);
   activate("node-client");
-  await fly("client", "coord", `tx ${amount}`);
+  await fly("client", "coord", "REQUEST", `transfer ${amount}`);
   deactivate("node-client");
   activate("node-coord");
-  await sleep(300);
+  coordState.textContent = "iniciando 2PC…";
+  await sleep(ms(280));
 
-  logStep(`Coordenador envia PREPARE aos dois bancos`);
+  /* ===== PHASE 1: VOTING ===== */
+  setPhase(1, "active");
+  coordState.textContent = "Fase 1 · PREPARE";
+  logStep(`▸ Fase 1 (voting): coordenador envia PREPARE`);
+
   await Promise.all([
-    fly("coord", "bankA", "PREPARE"),
-    fly("coord", "bankB", "PREPARE"),
+    fly("coord", "bankA", "PREPARE", `{ amount: ${amount} }`),
+    fly("coord", "bankB", "PREPARE", `{ amount: ${amount} }`),
   ]);
   activate("node-bankA");
   activate("node-bankB");
-  await sleep(400);
+  await sleep(ms(380));
 
-  const voteA = willCommit ? "YES" : "NO";
+  // Votes
+  const voteA = (kind === "ABORT") ? "NO" : "YES";
   const voteB = "YES";
   voteAEl.textContent = `voto: ${voteA}`;
   voteBEl.textContent = `voto: ${voteB}`;
-  logStep(`Banco A vota ${voteA} ${willCommit ? "(saldo ≥ valor)" : "(saldo insuficiente)"}`,
+  logStep(`Banco A vota ${voteA}${voteA === "NO" ? " — saldo insuficiente" : " — saldo ok"}`,
     voteA === "YES" ? "commit" : "abort");
   logStep(`Banco B vota ${voteB}`, "commit");
+  voteA === "YES" ? soundYes() : soundNo();
 
   await Promise.all([
-    fly("bankA", "coord", voteA, voteA === "YES" ? "yes" : "no"),
-    fly("bankB", "coord", voteB, "yes"),
+    fly("bankA", "coord", voteA, "", voteA === "YES" ? "yes" : "no"),
+    fly("bankB", "coord", voteB, "", "yes"),
   ]);
   deactivate("node-bankA");
   deactivate("node-bankB");
+  markPhaseDone(1);
 
+  /* ===== FAILURE BRANCH ===== */
+  if (crashes) {
+    // Banco A crasha após votar YES, antes do COMMIT chegar
+    logStep(`Banco A vota YES e crasha imediatamente após`, "warn");
+    statusAEl.textContent = "✗ CRASHED";
+    $("node-bankA").classList.add("crashed");
+    soundFail();
+    await sleep(ms(700));
+
+    setPhase(2, "active");
+    coordDecision.textContent = "decisão: COMMIT";
+    coordDecision.classList.add("commit");
+    coordState.textContent = "Fase 2 · COMMIT";
+    logStep(`▸ Fase 2 (decision): coordenador decide COMMIT (todos votaram YES)`);
+
+    // Tries to send COMMIT to A — fails
+    logStep(`Coordenador tenta enviar COMMIT a Banco A…`, "warn");
+    hotPath("coord-bankA", "no");
+    packetG.classList.add("no");
+    packetLabel.textContent = "COMMIT";
+    packetPayload.textContent = "(timeout)";
+    packetG.setAttribute("transform", `translate(${POINTS.coord[0]},${POINTS.coord[1]})`);
+    packetG.classList.remove("hidden");
+    await sleep(ms(120));
+    // Move halfway, then fade
+    const [mx, my] = [(POINTS.coord[0]+POINTS.bankA[0])/2, (POINTS.coord[1]+POINTS.bankA[1])/2];
+    packetG.setAttribute("transform", `translate(${mx},${my})`);
+    await sleep(ms(700));
+    packetG.classList.add("hidden");
+    clearPath("coord-bankA");
+
+    coordState.textContent = "BLOQUEADO · timeout";
+    coordState.classList.add("blocked");
+    $("node-coord").classList.add("blocked");
+    logStep(`⚠ Timeout: Banco A não responde. Coordenador FICA BLOQUEADO.`, "warn");
+    logStep(`Esta é a fraqueza clássica do 2PC: bloqueia se participante cai`, "warn");
+    logStep(`Banco B continua com lock segurando — não pode commitar nem abortar sozinho`, "warn");
+    soundFail();
+    setPhase(2, "active");
+    markPhaseDone(2, "abort");
+
+    // Phase 3 não acontece neste cenário
+    chainState.textContent = "nenhum registro — sistema bloqueado";
+    chainBlock.textContent = "(precisaria intervenção operacional)";
+
+    [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = false);
+    running = false;
+    return;
+  }
+
+  /* ===== PHASE 2: DECISION ===== */
+  setPhase(2, "active");
   const decision = willCommit ? "COMMIT" : "ABORT";
   coordDecision.textContent = `decisão: ${decision}`;
   coordDecision.classList.add(decision.toLowerCase());
-  logStep(`Coordenador decide: ${decision}`, decision.toLowerCase());
-  await sleep(600);
+  coordState.textContent = `Fase 2 · ${decision}`;
+  logStep(`▸ Fase 2 (decision): coordenador decide ${decision}`, decision.toLowerCase());
+  await sleep(ms(550));
 
-  logStep(`Coordenador envia ${decision} aos dois bancos`);
   await Promise.all([
-    fly("coord", "bankA", decision, decision === "COMMIT" ? "yes" : "no"),
-    fly("coord", "bankB", decision, decision === "COMMIT" ? "yes" : "no"),
+    fly("coord", "bankA", decision, `txId: tx-...`, willCommit ? "yes" : "no"),
+    fly("coord", "bankB", decision, `txId: tx-...`, willCommit ? "yes" : "no"),
   ]);
 
   if (willCommit) {
     balAEl.textContent = String(100 - amount);
     balBEl.textContent = String(20 + amount);
-    document.getElementById("node-bankA").classList.add("commit");
-    document.getElementById("node-bankB").classList.add("commit");
+    statusAEl.textContent = "✓ aplicado";
+    statusBEl.textContent = "✓ aplicado";
+    $("node-bankA").classList.add("commit");
+    $("node-bankB").classList.add("commit");
     logStep(`Bancos atualizam saldos: A=${100 - amount}, B=${20 + amount}`, "commit");
+    markPhaseDone(2);
   } else {
-    document.getElementById("node-bankA").classList.add("abort");
-    document.getElementById("node-bankB").classList.add("abort");
-    logStep(`Bancos mantêm saldos inalterados`, "abort");
+    statusAEl.textContent = "saldo intacto";
+    statusBEl.textContent = "saldo intacto";
+    $("node-bankA").classList.add("abort");
+    $("node-bankB").classList.add("abort");
+    logStep(`Bancos mantêm saldos inalterados (atomicidade preservada)`, "abort");
+    markPhaseDone(2, "abort");
   }
-  await sleep(500);
+  await sleep(ms(500));
 
-  logStep(`Coordenador grava decisão no smart contract (Sepolia)`, "chain");
-  await fly("coord", "chain", "recordDecision", "chain");
-  document.getElementById("node-chain").classList.add("chain-recorded");
+  /* ===== PHASE 3: ON-CHAIN AUDIT ===== */
+  setPhase(3, "active");
+  coordState.textContent = "Fase 3 · audit on-chain";
+  logStep(`▸ Fase 3 (audit): gravando decisão no smart contract Sepolia`, "chain");
+
+  await fly("coord", "chain", "recordDecision", `(${decision}, ${amount})`, "chain");
+  $("node-chain").classList.add("chain-recorded");
+  soundChain();
+
+  // Fetch real receipt to show actual block info
   chainState.textContent = `${decision} registrado · amount=${amount}`;
+  chainBlock.textContent = "buscando block info…";
+  showChainLink(decision);
+
+  const receipt = await getReceipt(decision);
+  if (receipt) {
+    chainBlock.textContent = `block #${receipt.blockNumber} · gas ${receipt.gasUsed}`;
+    logStep(`Receipt real: block #${receipt.blockNumber}, gas usado ${receipt.gasUsed}`, "chain");
+  } else {
+    chainBlock.textContent = "(receipt indisponível no RPC)";
+  }
   logStep(`✓ Decisão imutável on-chain — auditoria garantida`, "chain");
+  markPhaseDone(3, "chain");
 
   deactivate("node-coord");
+  coordState.textContent = "transação concluída";
+
+  [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = false);
   running = false;
 }
 
-document.getElementById("btn-commit").addEventListener("click", () => runScenario(50));
-document.getElementById("btn-abort").addEventListener("click", () => runScenario(150));
-document.getElementById("btn-reset").addEventListener("click", () => { if (!running) resetUI(); });
+btnCommit.addEventListener("click", () => runScenario("COMMIT"));
+btnAbort.addEventListener("click", () => runScenario("ABORT"));
+btnFail.addEventListener("click", () => runScenario("FAIL"));
+btnReset.addEventListener("click", () => { if (!running) resetUI(); });
 
 resetUI();
 
-/* ---------------- On-chain reader ---------------- */
-
-const onchainEl = document.getElementById("onchain");
+/* ---------------- On-chain reader (section 2) ---------------- */
+const onchainEl = $("onchain");
 
 async function fetchRecord(txId) {
   onchainEl.innerHTML = `<p class="muted">Consultando ${txId} no contrato…</p>`;

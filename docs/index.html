@@ -28,76 +28,120 @@
     <div class="container">
       <h2>1. O fluxo, passo a passo</h2>
       <p class="muted">
-        Cliente pede a transferência. O coordenador pergunta aos bancos se podem efetivar.
-        Se todos respondem YES, ele decide COMMIT; se algum responde NO, decide ABORT.
-        A decisão final é registrada na blockchain.
+        O protocolo 2PC roda em duas fases. Na <strong>Fase 1 (voting)</strong> o coordenador
+        pergunta a cada participante se pode efetivar a transação. Na <strong>Fase 2 (decision)</strong>
+        ele consolida os votos e ordena COMMIT ou ABORT. A decisão final é gravada na
+        blockchain — uma terceira "fase" externa ao 2PC clássico, que serve de trilha de auditoria.
       </p>
 
       <div class="controls">
-        <button id="btn-commit" class="btn btn-primary">▶ Cenário COMMIT (valor 50)</button>
-        <button id="btn-abort" class="btn">▶ Cenário ABORT (valor 150)</button>
+        <button id="btn-commit" class="btn btn-primary" aria-label="Executar cenário com decisão COMMIT">▶ Cenário COMMIT</button>
+        <button id="btn-abort" class="btn" aria-label="Executar cenário com decisão ABORT">▶ Cenário ABORT</button>
+        <button id="btn-fail" class="btn btn-danger" aria-label="Executar cenário com falha de participante">▶ Cenário FALHA</button>
         <button id="btn-reset" class="btn btn-ghost">Reiniciar</button>
+        <div class="opt">
+          <label for="speed">Velocidade</label>
+          <select id="speed" aria-label="Velocidade da animação">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+          </select>
+        </div>
+        <label class="opt toggle">
+          <input type="checkbox" id="sound" /> Som
+        </label>
+      </div>
+
+      <!-- Phase indicator -->
+      <div class="phases" role="list">
+        <div class="phase" data-phase="1" role="listitem">
+          <span class="phase-dot">1</span>
+          <span class="phase-label">Voting <span class="muted">(PREPARE → votos)</span></span>
+        </div>
+        <div class="phase" data-phase="2" role="listitem">
+          <span class="phase-dot">2</span>
+          <span class="phase-label">Decision <span class="muted">(COMMIT/ABORT)</span></span>
+        </div>
+        <div class="phase" data-phase="3" role="listitem">
+          <span class="phase-dot">3</span>
+          <span class="phase-label">Audit <span class="muted">(on-chain)</span></span>
+        </div>
       </div>
 
       <div class="stage">
-        <svg id="diagram" viewBox="0 0 800 560" xmlns="http://www.w3.org/2000/svg">
+        <svg id="diagram" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama interativo do protocolo 2PC">
           <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+              <path d="M0,0 L10,5 L0,10 z" fill="#5a6478"/>
+            </marker>
+            <marker id="arrow-hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6ea8fe"/>
             </marker>
           </defs>
 
-          <!-- Cliente -->
+          <!-- Nodes -->
           <g class="node" id="node-client" transform="translate(340,20)">
             <rect width="120" height="50" rx="10"/>
             <text x="60" y="30" text-anchor="middle">Cliente</text>
+            <title>Origem da requisição — pede a transferência ao coordenador</title>
           </g>
 
-          <!-- Coordenador -->
-          <g class="node" id="node-coord" transform="translate(320,130)">
-            <rect width="160" height="60" rx="10"/>
-            <text x="80" y="34" text-anchor="middle">Coordenador 2PC</text>
-            <text class="small" x="80" y="52" text-anchor="middle" id="coord-decision"></text>
+          <g class="node" id="node-coord" transform="translate(310,130)">
+            <rect width="180" height="70" rx="10"/>
+            <text x="90" y="30" text-anchor="middle">Coordenador 2PC</text>
+            <text class="small" x="90" y="50" text-anchor="middle" id="coord-state">aguardando…</text>
+            <text class="small" x="90" y="64" text-anchor="middle" id="coord-decision"></text>
+            <title>Toma a decisão pela rede. Single point of failure clássico do 2PC.</title>
           </g>
 
-          <!-- Banco A -->
-          <g class="node bank" id="node-bankA" transform="translate(80,260)">
-            <rect width="180" height="80" rx="10"/>
-            <text x="90" y="32" text-anchor="middle">Banco A</text>
-            <text class="small" x="90" y="54" text-anchor="middle">saldo: <tspan id="balA">100</tspan></text>
-            <text class="small" x="90" y="70" text-anchor="middle" id="voteA"></text>
+          <g class="node bank" id="node-bankA" transform="translate(60,290)">
+            <rect width="200" height="90" rx="10"/>
+            <text x="100" y="32" text-anchor="middle">Banco A</text>
+            <text class="small" x="100" y="54" text-anchor="middle">saldo: <tspan id="balA">100</tspan></text>
+            <text class="small" x="100" y="70" text-anchor="middle" id="voteA"></text>
+            <text class="small" x="100" y="84" text-anchor="middle" id="statusA"></text>
+            <title>Participante 1 — vota YES se saldo ≥ valor</title>
           </g>
 
-          <!-- Banco B -->
-          <g class="node bank" id="node-bankB" transform="translate(540,260)">
-            <rect width="180" height="80" rx="10"/>
-            <text x="90" y="32" text-anchor="middle">Banco B</text>
-            <text class="small" x="90" y="54" text-anchor="middle">saldo: <tspan id="balB">20</tspan></text>
-            <text class="small" x="90" y="70" text-anchor="middle" id="voteB"></text>
+          <g class="node bank" id="node-bankB" transform="translate(540,290)">
+            <rect width="200" height="90" rx="10"/>
+            <text x="100" y="32" text-anchor="middle">Banco B</text>
+            <text class="small" x="100" y="54" text-anchor="middle">saldo: <tspan id="balB">20</tspan></text>
+            <text class="small" x="100" y="70" text-anchor="middle" id="voteB"></text>
+            <text class="small" x="100" y="84" text-anchor="middle" id="statusB"></text>
+            <title>Participante 2 — sempre vota YES neste lab (recebe valor)</title>
           </g>
 
-          <!-- Blockchain -->
-          <g class="node blockchain" id="node-chain" transform="translate(280,420)">
-            <rect width="240" height="100" rx="14"/>
-            <text x="120" y="34" text-anchor="middle">Smart Contract</text>
-            <text class="small" x="120" y="56" text-anchor="middle">Sepolia · CommitLog</text>
-            <text class="small mono" x="120" y="80" text-anchor="middle" id="chain-state">aguardando registro…</text>
+          <g class="node blockchain" id="node-chain" transform="translate(270,450)">
+            <rect width="260" height="120" rx="14"/>
+            <text x="130" y="32" text-anchor="middle">Smart Contract</text>
+            <text class="small" x="130" y="52" text-anchor="middle">Sepolia · CommitLog</text>
+            <text class="small mono" x="130" y="74" text-anchor="middle" id="chain-state">aguardando registro…</text>
+            <text class="small mono" x="130" y="92" text-anchor="middle" id="chain-block"></text>
+            <text class="small" x="130" y="110" text-anchor="middle" id="chain-link"></text>
+            <title>Registro imutável da decisão na Ethereum Sepolia</title>
           </g>
 
-          <!-- caminhos -->
-          <path id="path-cli-coord" d="M400,70 L400,130" />
-          <path id="path-coord-A" d="M370,190 L170,260" />
-          <path id="path-coord-B" d="M430,190 L630,260" />
-          <path id="path-A-coord" d="M170,260 L370,190" />
-          <path id="path-B-coord" d="M630,260 L430,190" />
-          <path id="path-coord-chain" d="M400,190 L400,420" />
+          <!-- Paths -->
+          <path id="path-cli-coord"  class="link" d="M400,70 L400,130"  marker-end="url(#arrow)"/>
+          <path id="path-coord-A"    class="link" d="M370,200 L180,290" marker-end="url(#arrow)"/>
+          <path id="path-coord-B"    class="link" d="M430,200 L620,290" marker-end="url(#arrow)"/>
+          <path id="path-A-coord"    class="link" d="M180,290 L370,200" marker-end="url(#arrow)"/>
+          <path id="path-B-coord"    class="link" d="M620,290 L430,200" marker-end="url(#arrow)"/>
+          <path id="path-coord-chain" class="link" d="M400,200 L400,450" marker-end="url(#arrow)"/>
 
-          <!-- packet em movimento -->
-          <circle id="packet" r="9" cx="-50" cy="-50" />
-          <text id="packet-label" x="-50" y="-46" text-anchor="middle"></text>
+          <!-- Moving packet w/ payload bubble -->
+          <g id="packet-group" class="hidden">
+            <g id="packet-bubble">
+              <rect id="packet-rect" x="-70" y="-44" width="140" height="32" rx="6"/>
+              <text id="packet-label" x="0" y="-30" text-anchor="middle"></text>
+              <text id="packet-payload" class="payload" x="0" y="-18" text-anchor="middle"></text>
+            </g>
+            <circle id="packet" r="9" cx="0" cy="0"/>
+          </g>
         </svg>
 
-        <div class="log">
+        <div class="log" aria-live="polite">
           <h3>Log do coordenador</h3>
           <ol id="log-list"></ol>
         </div>
