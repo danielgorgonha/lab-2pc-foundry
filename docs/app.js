@@ -58,11 +58,25 @@ const btnCommit = $("btn-commit");
 const btnAbort = $("btn-abort");
 const btnFail = $("btn-fail");
 const btnReset = $("btn-reset");
+const timerEl = $("timer");
 
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Educational demo: animation runs at full speed regardless of OS reduced-motion setting.
 
 /* ---------------- State ---------------- */
 let running = false;
+let timerInterval = null;
+function startTimer() {
+  const t0 = Date.now();
+  timerEl.textContent = "⏱ 0.0s";
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timerEl.textContent = `⏱ ${((Date.now() - t0) / 1000).toFixed(1)}s`;
+  }, 100);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
 
 /* ---------------- Sound (Web Audio) ---------------- */
 let audioCtx;
@@ -88,10 +102,10 @@ const soundChain = () => { beep(523, 120); setTimeout(() => beep(784, 180), 110)
 const soundFail = () => beep(110, 400, "square", 0.06);
 
 /* ---------------- Helpers ---------------- */
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const ms = (n) => reducedMotion ? 0 : n;
-const TRAVEL_MS = 1200;  // packet flight time (matches CSS transition)
-const PAUSE_AFTER = 320; // small pause after each fly
+const sleep = (n) => new Promise((r) => setTimeout(r, n));
+const ms = (n) => n;
+const TRAVEL_MS = 6000;   // packet flight time along the curve
+const PAUSE_AFTER = 2000; // pause after each fly
 
 function setPhase(idx, state = "active") {
   phases.forEach((el, i) => {
@@ -164,30 +178,45 @@ function resetUI() {
   clearPhases();
 }
 
-/* Fly a packet from `from` to `to`, light up the path, show payload bubble. */
+/* Fly a packet following the actual SVG curve, light up the path, show payload bubble. */
 async function fly(from, to, label, payload = "", variant = "") {
   const pathKey = `${from}-${to}`;
-  const [fx, fy] = POINTS[from];
-  const [tx, ty] = POINTS[to];
+  const pathId = PATHS[pathKey];
+  const pathEl = document.getElementById(pathId);
+  if (!pathEl) { console.error("No path:", pathKey); return; }
+  const totalLen = pathEl.getTotalLength();
 
   packetG.classList.remove("yes", "no", "chain");
   if (variant) packetG.classList.add(variant);
 
   packetLabel.textContent = label;
   packetPayload.textContent = payload || "";
-  packetG.setAttribute("transform", `translate(${fx},${fy})`);
+
+  // Snap to start of the curve
+  const start = pathEl.getPointAtLength(0);
+  packetG.setAttribute("transform", `translate(${start.x},${start.y})`);
   packetG.classList.remove("hidden");
 
   hotPath(pathKey, variant);
   soundMsg();
+  await sleep(80);
 
-  await sleep(60);
-  packetG.setAttribute("transform", `translate(${tx},${ty})`);
-  await sleep(ms(TRAVEL_MS));
+  // Walk along the curve with requestAnimationFrame
+  await new Promise((resolve) => {
+    const t0 = performance.now();
+    function step(now) {
+      const t = Math.min((now - t0) / TRAVEL_MS, 1);
+      const p = pathEl.getPointAtLength(t * totalLen);
+      packetG.setAttribute("transform", `translate(${p.x},${p.y})`);
+      if (t < 1) requestAnimationFrame(step);
+      else resolve();
+    }
+    requestAnimationFrame(step);
+  });
 
   packetG.classList.add("hidden");
   clearPath(pathKey);
-  await sleep(ms(PAUSE_AFTER));
+  await sleep(PAUSE_AFTER);
 }
 
 /* ---------------- Real on-chain receipt fetching ---------------- */
@@ -223,6 +252,7 @@ async function runScenario(kind) {
   running = true;
   [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = true);
   resetUI();
+  startTimer();
 
   const amount = kind === "ABORT" ? 150 : 50;
   const willCommit = kind === "COMMIT";
@@ -235,20 +265,18 @@ async function runScenario(kind) {
   deactivate("node-client");
   activate("node-coord");
   coordState.textContent = "iniciando 2PC…";
-  await sleep(ms(700));
+  await sleep(1800);
 
   /* ===== PHASE 1: VOTING ===== */
   setPhase(1, "active");
   coordState.textContent = "Fase 1 · PREPARE";
   logStep(`▸ Fase 1 (voting): coordenador envia PREPARE`);
 
-  await Promise.all([
-    fly("coord", "bankA", "PREPARE", `{ amount: ${amount} }`),
-    fly("coord", "bankB", "PREPARE", `{ amount: ${amount} }`),
-  ]);
+  await fly("coord", "bankA", "PREPARE", `{ amount: ${amount} }`);
+  await fly("coord", "bankB", "PREPARE", `{ amount: ${amount} }`);
   activate("node-bankA");
   activate("node-bankB");
-  await sleep(ms(900));
+  await sleep(2200);
 
   // Votes
   const voteA = (kind === "ABORT") ? "NO" : "YES";
@@ -260,10 +288,8 @@ async function runScenario(kind) {
   logStep(`Banco B vota ${voteB}`, "commit");
   voteA === "YES" ? soundYes() : soundNo();
 
-  await Promise.all([
-    fly("bankA", "coord", voteA, "", voteA === "YES" ? "yes" : "no"),
-    fly("bankB", "coord", voteB, "", "yes"),
-  ]);
+  await fly("bankA", "coord", voteA, "", voteA === "YES" ? "yes" : "no");
+  await fly("bankB", "coord", voteB, "", "yes");
   deactivate("node-bankA");
   deactivate("node-bankB");
   markPhaseDone(1);
@@ -315,6 +341,7 @@ async function runScenario(kind) {
 
     [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = false);
     running = false;
+    stopTimer();
     return;
   }
 
@@ -325,12 +352,10 @@ async function runScenario(kind) {
   coordDecision.classList.add(decision.toLowerCase());
   coordState.textContent = `Fase 2 · ${decision}`;
   logStep(`▸ Fase 2 (decision): coordenador decide ${decision}`, decision.toLowerCase());
-  await sleep(ms(1100));
+  await sleep(2500);
 
-  await Promise.all([
-    fly("coord", "bankA", decision, `txId: tx-...`, willCommit ? "yes" : "no"),
-    fly("coord", "bankB", decision, `txId: tx-...`, willCommit ? "yes" : "no"),
-  ]);
+  await fly("coord", "bankA", decision, `txId: tx-...`, willCommit ? "yes" : "no");
+  await fly("coord", "bankB", decision, `txId: tx-...`, willCommit ? "yes" : "no");
 
   if (willCommit) {
     balAEl.textContent = String(100 - amount);
@@ -349,14 +374,16 @@ async function runScenario(kind) {
     logStep(`Bancos mantêm saldos inalterados (atomicidade preservada)`, "abort");
     markPhaseDone(2, "abort");
   }
-  await sleep(ms(1000));
+  await sleep(2200);
 
   /* ===== PHASE 3: ON-CHAIN AUDIT ===== */
   setPhase(3, "active");
   coordState.textContent = "Fase 3 · audit on-chain";
   logStep(`▸ Fase 3 (audit): gravando decisão no smart contract Sepolia`, "chain");
+  await sleep(2000);
 
   await fly("coord", "chain", "recordDecision", `(${decision}, ${amount})`, "chain");
+  await sleep(2000);
   $("node-chain").classList.add("chain-recorded");
   soundChain();
 
@@ -380,6 +407,7 @@ async function runScenario(kind) {
 
   [btnCommit, btnAbort, btnFail].forEach((b) => b.disabled = false);
   running = false;
+  stopTimer();
 }
 
 btnCommit.addEventListener("click", () => runScenario("COMMIT"));

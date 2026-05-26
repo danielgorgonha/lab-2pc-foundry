@@ -116,6 +116,24 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
   font-size: 13px;
 }
 .opt.toggle input { accent-color: var(--accent); }
+.opt.timer {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  background: rgba(110,168,254,0.08);
+  border: 1px solid rgba(110,168,254,0.3);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: center;
+}
+.opt.version {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.6;
+}
 
 /* PHASES */
 .phases {
@@ -242,8 +260,8 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
   to { stroke-dashoffset: -26; }
 }
 
-/* Packet + payload bubble */
-#packet-group { transition: transform 1.1s cubic-bezier(.45,.05,.25,1); }
+/* Packet + payload bubble — position driven by JS rAF along the SVG curve, no CSS transition */
+#packet-group { /* transition intentionally none */ }
 #packet-group.hidden { opacity: 0; pointer-events: none; }
 #packet {
   fill: var(--accent);
@@ -405,8 +423,4 @@ code { font-family: var(--mono); background: var(--surface); padding: 1px 6px; b
 footer { padding: 40px 0; border-top: 1px solid var(--border); margin-top: 40px; }
 footer a { color: var(--muted); }
 
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  #packet-group, #diagram .link, #diagram .node rect { transition: none !important; animation: none !important; }
-  .log li { transition: none !important; }
-}
+/* Note: educational demo — animations are NOT suppressed by prefers-reduced-motion. */
