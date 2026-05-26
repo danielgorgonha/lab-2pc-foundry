@@ -1,5 +1,8 @@
 # lab-2pc-foundry
 
+> 🌐 **[Visualização interativa do fluxo →](https://danielgorgonha.github.io/lab-2pc-foundry/)**
+> Animação dos cenários COMMIT/ABORT + leitura on-chain em tempo real.
+
 Lab final da disciplina de Sistemas Distribuídos: protocolo **Two-Phase Commit (2PC)** entre dois bancos em Node.js, com registro imutável da decisão final em um **smart contract na Sepolia**.
 
 Esta versão estende o contrato original da aula adicionando o campo `amount` ao struct `TransactionRecord`, de forma que `cast call records(...)` retorne os 5 campos: `transactionId`, `decision`, `timestamp`, `coordinator` e `amount`.
